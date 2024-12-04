@@ -35,3 +35,7 @@ Las contribuciones son bienvenidas. Por favor, abre un issue o un pull request p
 ## Licencia
 
 Este proyecto está licenciado bajo la Licencia MIT. Consulta el archivo LICENSE para más detalles.
+
+## Informe
+
+Puedes encontrar el informe detallado del proyecto en el siguiente [enlace](https://alumnosuach-my.sharepoint.com/:w:/g/personal/sebastian_pangue_alumnos_uach_cl/EWMQVJl_ivpKkAkccO8GxGIBggjkfApzTwi7znMxn5o26w?e=Pb6OPa).
