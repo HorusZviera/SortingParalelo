@@ -1,31 +1,34 @@
-# Compiler
-CC = gcc
+# Nombre del compilador
+CXX = g++
 
-# Compiler flags
-CFLAGS = -Wall -O2 -fopenmp
+# Opciones del compilador
+CXXFLAGS = -std=c++11 -Wall -Wextra
 
-# Target executable
-TARGET = sorting_paralelo
+# Nombre del ejecutable
+TARGET = Ejecutables/main
 
-# Source files
-SRCS = CPU.cu GPU.cu
+# Archivos fuente
+SRC = Main.cpp
 
-# Object files
-OBJS = $(SRCS:.cu=.o)
+# Archivos objeto
+OBJ = $(patsubst %.cpp,Ejecutables/%.o,$(SRC))
 
-# Default target
+# Regla predeterminada
 all: $(TARGET)
 
-# Link object files to create the executable
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+# Regla para crear el ejecutable
+$(TARGET): $(OBJ)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJ)
 
-# Compile source files to object files
-%.o: %.cu
-	$(CC) $(CFLAGS) -c $< -o $@
+# Regla para compilar los archivos fuente a objeto
+Ejecutables/%.o: %.cpp
+	@mkdir -p Ejecutables
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Clean up build files
+# Regla para limpiar los archivos generados
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJ) $(TARGET)
 
-.PHONY: all clean
+# Regla de limpieza completa
+clean-all: clean
+	rm -rf Ejecutables/*.o

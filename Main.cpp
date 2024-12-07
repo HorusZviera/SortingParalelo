@@ -1,39 +1,85 @@
 #include <iostream>
-
-// Function declarations for CPU and GPU sorting
-void sortCPU(int* data, int size);
-void sortGPU(int* data, int size);
+#include <cstdlib>
+#include <ctime>
+#include <thread>
 
 using namespace std;
 
-int main() {
-    const int tamano = 10;
-    int datos[tamano] = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+// Global variables
+const int tamano = 100;
+int* arreglo_A;
+int* arreglo_B;
 
-    cout << "Datos originales: ";
+void rellenarArreglos(int tamano) {
+    srand(time(0));
+
+    arreglo_A = new int[tamano];
+    arreglo_B = new int[tamano];
+
+    // Llenar los arreglos 
     for (int i = 0; i < tamano; ++i) {
-        cout << datos[i] << " ";
+        arreglo_A[i] = rand() % 11;
+        arreglo_B[i] = arreglo_A[i]; 
+    }
+}
+
+void imprimirArreglo(int tamano) {
+    cout << "Arreglo: ";
+    for (int i = 0; i < tamano; ++i) {
+        cout << arreglo_A[i] << " ";
     }
     cout << endl;
+}
 
-    // Ordenar usando CPU
-    sortCPU(datos, tamano);
-    cout << "Datos ordenados (CPU): ";
-    for (int i = 0; i < tamano; ++i) {
-        cout << datos[i] << " ";
+void benchmarkCPU(int n, int nt) {
+    // Implementar benchmark en CPU
+}
+
+void benchmarkGPU(int n, int nt) {
+    // Implementar benchmark en GPU
+}
+
+int main(int argc, char* argv[]) {
+
+    int max_threads = thread::hardware_concurrency();
+
+
+    if (argc != 4) {
+        cerr << "Uso: " << argv[0] << " <n> <modo> <nt>" << endl;
+        return 1;
     }
-    cout << endl;
 
-    // Restablecer datos
-    int datos2[tamano] = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+    int n = atoi(argv[1]);          // Tamaño de los arreglos
+    int modo = atoi(argv[2]);       //0: CPU, 1: GPU
+    int nt = atoi(argv[3]);         // Número de threads
 
-    // Ordenar usando GPU
-    sortGPU(datos2, tamano);
-    cout << "Datos ordenados (GPU): ";
-    for (int i = 0; i < tamano; ++i) {
-        cout << datos2[i] << " ";
+    if (n <= 0 || (modo != 0 && modo != 1) || nt <= 0) {
+        cerr << "Argumentos invalidos." << endl;
+        return 1;
     }
-    cout << endl;
+
+    if (nt > max_threads) {
+        cerr << "El número de threads no puede ser mayor al número máximo de threads del sistema (" << max_threads << ")." << endl;
+        return 1;
+    }
+
+
+    rellenarArreglos(n);
+    cout << "Arreglo generado." << endl;
+    imprimirArreglo(n);
+
+    // benchmark
+    if (modo == 0) {
+        benchmarkCPU(n, nt);
+    } else {
+        benchmarkGPU(n, nt);
+    }
+    
+
+
+    // Liberar memoria
+    delete[] arreglo_A;
+    delete[] arreglo_B;
 
     return 0;
 }
