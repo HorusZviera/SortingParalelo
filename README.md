@@ -25,7 +25,9 @@ Este proyecto implementa varios algoritmos de ordenamiento en paralelo. El objet
     ```
 3. Ejecuta los scripts de prueba:
     ```bash
-    /prog $((2**26)) 0 8
+    ./Ejecutables/prog $((2**26)) 0 8
+    o
+    ./Ejecutables/prog 10 0 7
     ```
 
 ## Contribuciones
