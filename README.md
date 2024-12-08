@@ -1,43 +1,122 @@
-# SortingParalelo
 
-## Descripción
+# Radix Sort Benchmark: CPU vs GPU
 
-Este proyecto implementa varios algoritmos de ordenamiento en paralelo. El objetivo es comparar el rendimiento de estos algoritmos en diferentes escenarios y tamaños de datos.
+Este proyecto implementa y compara el rendimiento del algoritmo **Radix Sort** en dos plataformas: **CPU** (usando OpenMP) y **GPU** (usando CUDA). Ademas, genera graficos para analizar los resultados del rendimiento.
 
-## Algoritmos Implementados
+## Estructura del Proyecto
 
+- **`radix_sort.cu`**: Codigo principal que implementa Radix Sort tanto en CPU como en GPU.
+- **`Gen_Graficos.py`**: Script Python que genera un grafico comparativo del tiempo de ejecucion entre CPU y GPU.
+- **`Makefile`**: Archivo Make para compilar y ejecutar el proyecto.
+- **`Graficos/output.txt`**: Archivo generado tras ejecutar el programa, donde se almacenan los tiempos de ejecucion de las iteraciones.
+- **`radix_sort_benchmark.png`**: Imagen del grafico generado tras ejecutar el script Python.
 
+---
 
 ## Requisitos
 
-- Bibliotecas de C++: omp, iostream, vector, algorithm, cstdlib, ctime
-- Bibliotecas de CUDA: cuda_runtime
+### Software
+1. **NVIDIA CUDA Toolkit**: Para compilar y ejecutar el codigo en GPU.
+2. **Python 3**: Para generar los graficos (requerimientos adicionales: `matplotlib`).
+3. **GCC**: Para compilar el codigo en CPU con soporte OpenMP.
+4. **GNU Make**: Para gestionar la compilacion.
+5. **CMake** (opcional): En caso de personalizar el proceso de compilacion.
 
-## Uso
+### Hardware
+- GPU compatible con **CUDA**.
+- CPU multinucleo para aprovechar **OpenMP**.
 
-1. Clona el repositorio:
-    ```bash
-    git clone https://github.com/HorusZviera/SortingParalelo.git
-    ```
-2. Navega al directorio del proyecto:
-    ```bash
-    cd SortingParalelo
-    ```
-3. Ejecuta los scripts de prueba:
-    ```bash
-    ./Ejecutables/prog $((2**26)) 0 8
-    o
-    ./Ejecutables/prog 10 0 7
-    ```
+---
 
-## Contribuciones
+## Instalacion y Compilacion
 
-Las contribuciones son bienvenidas. Por favor, abre un issue o un pull request para discutir cualquier cambio.
+1. **Clona el repositorio** (o copia los archivos necesarios en un directorio):
+   ```bash
+   git clone <repositorio-url>
+   cd <directorio-del-proyecto>
+   ```
+
+2. **Compila el proyecto** usando el archivo `Makefile`:
+   ```bash
+   make
+   ```
+
+3. (Opcional) Limpia los archivos generados:
+   ```bash
+   make clean
+   ```
+
+---
+
+## Ejecucion
+
+### Modo Benchmark
+El programa compara el rendimiento de Radix Sort en CPU y GPU. Usa los siguientes comandos:
+
+#### Ejecutar en CPU
+```bash
+./Ejecutables/prog <n> <num_hilos>
+```
+- `<n>`: Tamaño del arreglo (e.g., `1000000`).
+- `<num_hilos>`: Numero de hilos para OpenMP.
+
+#### Ejecutar en GPU
+```bash
+./Ejecutables/prog <n> 0
+```
+- `<n>`: Tamaño del arreglo (e.g., `1000000`).
+
+### Generar Graficos
+1. Tras ejecutar el programa, el archivo `Graficos/output.txt` contendra los resultados.
+2. Usa el script Python para generar los graficos:
+   ```bash
+   python3 Gen_Graficos.py
+   ```
+3. El grafico se guardara como `radix_sort_benchmark.png`.
+
+---
+
+## Ejemplo de Uso
+
+### Ejecucion de Benchmark
+1. Compila el proyecto:
+   ```bash
+   make
+   ```
+
+2. Ejecuta un benchmark para comparar CPU y GPU:
+   ```bash
+   ./Ejecutables/prog 1000000 8
+   ```
+
+3. Genera el grafico de los resultados:
+   ```bash
+   python3 Gen_Graficos.py
+   ```
+
+---
+
+## Resultados Esperados
+
+- **`output.txt`** contendra los tiempos de ejecucion de las iteraciones para CPU y GPU.
+- **`radix_sort_benchmark.png`** mostrara un grafico comparativo, donde se observara que la GPU suele ser significativamente mas rapida para tamaños grandes de datos.
+
+---
+
+## Notas Adicionales
+
+### Problemas Comunes
+- **CUDA Error**: Asegurate de tener un controlador NVIDIA y CUDA Toolkit instalado.
+- **Errores de Compilacion**: Confirma que `nvcc` esta configurado en el PATH del sistema.
+
+### Requerimientos de Python
+Instala `matplotlib` si no esta disponible:
+```bash
+pip install matplotlib
+```
+
+---
 
 ## Licencia
 
-Este proyecto está licenciado bajo la Licencia MIT. Consulta el archivo LICENSE para más detalles.
-
-## Informe
-
-Puedes encontrar el informe detallado del proyecto en el siguiente [enlace](https://alumnosuach-my.sharepoint.com/:w:/g/personal/sebastian_pangue_alumnos_uach_cl/EWMQVJl_ivpKkAkccO8GxGIBggjkfApzTwi7znMxn5o26w?e=Pb6OPa).
+Este proyecto esta bajo la **Licencia MIT**, lo que significa que puedes usar, modificar y distribuir el codigo libremente, siempre y cuando des credito al autor original.

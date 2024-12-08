@@ -1,10 +1,14 @@
 NVCC = nvcc
 CXXFLAGS = -Xcompiler -fopenmp
 LDFLAGS = -lgomp
-TARGET = prog
+TARGET_DIR = Ejecutables
+TARGET = $(TARGET_DIR)/prog
 SRC = radix_sort.cu
 
-all: $(TARGET)
+all: $(TARGET_DIR) $(TARGET)
+
+$(TARGET_DIR):
+	mkdir -p $(TARGET_DIR)
 
 $(TARGET): $(SRC)
 	$(NVCC) $(CXXFLAGS) $(SRC) -o $(TARGET) $(LDFLAGS)
