@@ -16,7 +16,6 @@ void counting_sort_cpu(vector<int>& vec, int exp, int nt) {
     vector<int> output(n);
     vector<int> count(10, 0);
 
-    // Paso 1: Contar las ocurrencias de dígitos
     #pragma omp parallel num_threads(nt)
     {
         vector<int> local_count(10, 0);
@@ -32,12 +31,10 @@ void counting_sort_cpu(vector<int>& vec, int exp, int nt) {
         }
     }
 
-    // Paso 2: Sumar acumulativamente
     for (int i = 1; i < 10; i++) {
         count[i] += count[i - 1];
     }
 
-    // Paso 3: Construir el arreglo de salida
     #pragma omp parallel for num_threads(nt)
     for (int i = n - 1; i >= 0; i--) {
         int digit = (vec[i] / exp) % 10;
@@ -46,7 +43,6 @@ void counting_sort_cpu(vector<int>& vec, int exp, int nt) {
         count[digit]--;
     }
 
-    // Paso 4: Copiar al arreglo original
     vec = output;
 }
 
@@ -163,64 +159,118 @@ void ordenar_radix_sort_gpu_wrapper(vector<int>& host_vector) {
     cudaFree(d_scan);
 }
 
-
 void Benchmark(int n, int nt) {
+    ofstream outfile_timing("Graficos/tiempo_vs_n.txt");
+    ofstream outfile_cpu_speedup("Graficos/aceleracion_cpu_vs_hilos.txt");
+    ofstream outfile_cpu_efficiency("Graficos/eficiencia_cpu_vs_hilos.txt");
+    ofstream outfile_gpu_speedup("Graficos/aceleracion_gpu_vs_bloques.txt");
+    ofstream outfile_gpu_efficiency("Graficos/eficiencia_gpu_vs_bloques.txt");
+    ofstream outfile_speedup_vs_n("Graficos/aceleracion_vs_n.txt");
 
-    ofstream outfile("Graficos/output.txt");
-    if (!outfile) {
-        cerr << "Error al crear el archivo de salida" << endl;
+    if (!outfile_timing || !outfile_cpu_speedup || !outfile_cpu_efficiency || !outfile_gpu_speedup || !outfile_gpu_efficiency || !outfile_speedup_vs_n) {
+        cerr << "Error al crear archivos de salida" << endl;
         return;
     }
 
-    int num_iterations = 100; // Número de iteraciones para el benchmark
+    int max_threads = omp_get_max_threads();
+    int max_blocks = 1024; // Asume un límite razonable para bloques CUDA
 
-    for (int iter = 0; iter < num_iterations; iter++) {
-        vector<int> vec1(n), vec2(n), vec3(n);
+    for (int i = 1000; i <= n; i *= 10) {
+        vector<int> vec_cpu(i), vec_gpu(i);
         srand(time(0));
-        for (int i = 0; i < n; i++) {
+        for (int j = 0; j < i; j++) {
             int val = rand() % 100;
-            vec1[i] = val;
-            vec2[i] = val;
-            vec3[i] = val;
+            vec_cpu[j] = val;
+            vec_gpu[j] = val;
         }
 
-        double start_time, end_time, elapsed_time;
+        // Tiempo CPU
+        double start_time = omp_get_wtime();
+        ordenar_radix_sort_cpu_wrapper(vec_cpu.data(), i, nt);
+        double cpu_time = omp_get_wtime() - start_time;
+        outfile_timing << i << " " << cpu_time << endl;
 
-        // Benchmark CPU
+        // Tiempo GPU
         start_time = omp_get_wtime();
-        ordenar_radix_sort_cpu_wrapper(vec2.data(), n, nt);
-        end_time = omp_get_wtime();
-        elapsed_time = end_time - start_time;
-        outfile << "CPU Iteración " << iter + 1 << " " << fixed << setprecision(9) << elapsed_time << " segundos" << endl;
+        ordenar_radix_sort_gpu_wrapper(vec_gpu);
+        double gpu_time = omp_get_wtime() - start_time;
+        outfile_timing << i << " " << gpu_time << endl;
 
-        // Benchmark GPU
-        start_time = omp_get_wtime();
-        ordenar_radix_sort_gpu_wrapper(vec3);
-        end_time = omp_get_wtime();
-        elapsed_time = end_time - start_time;
-        outfile << "GPU Iteración " << iter + 1 << " " << fixed << setprecision(9) << elapsed_time << " segundos" << endl;
-
-        outfile << "----------------------------------------" << endl;
+        // Speedup
+        outfile_speedup_vs_n << i << " " << cpu_time / gpu_time << endl;
     }
 
-    outfile.close();
+    // CPU Speedup y Eficiencia
+    int problem_size = 1000000;
+    for (int threads = 1; threads <= max_threads; threads++) {
+        vector<int> vec(problem_size);
+        srand(time(0));
+        for (int i = 0; i < problem_size; i++) {
+            vec[i] = rand() % 100;
+        }
 
+        double baseline_time;
+        if (threads == 1) {
+            double start_time = omp_get_wtime();
+            ordenar_radix_sort_cpu_wrapper(vec.data(), problem_size, 1);
+            baseline_time = omp_get_wtime() - start_time;
+        }
+
+        double start_time = omp_get_wtime();
+        ordenar_radix_sort_cpu_wrapper(vec.data(), problem_size, threads);
+        double elapsed_time = omp_get_wtime() - start_time;
+
+        double speedup = baseline_time / elapsed_time;
+        double efficiency = speedup / threads;
+
+        outfile_cpu_speedup << threads << " " << speedup << endl;
+        outfile_cpu_efficiency << threads << " " << efficiency << endl;
+    }
+
+    // GPU Speedup y Eficiencia
+    for (int blocks = 1; blocks <= max_blocks; blocks *= 2) {
+        vector<int> vec(problem_size);
+        srand(time(0));
+        for (int i = 0; i < problem_size; i++) {
+            vec[i] = rand() % 100;
+        }
+
+        double baseline_time;
+        if (blocks == 1) {
+            double start_time = omp_get_wtime();
+            ordenar_radix_sort_gpu_wrapper(vec);
+            baseline_time = omp_get_wtime() - start_time;
+        }
+
+        double start_time = omp_get_wtime();
+        ordenar_radix_sort_gpu_wrapper(vec);
+        double elapsed_time = omp_get_wtime() - start_time;
+
+        double speedup = baseline_time / elapsed_time;
+        double efficiency = speedup / blocks;
+
+        outfile_gpu_speedup << blocks << " " << speedup << endl;
+        outfile_gpu_efficiency << blocks << " " << efficiency << endl;
+    }
+
+    outfile_timing.close();
+    outfile_cpu_speedup.close();
+    outfile_cpu_efficiency.close();
+    outfile_gpu_speedup.close();
+    outfile_gpu_efficiency.close();
+    outfile_speedup_vs_n.close();
 }
-
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
-        cerr << "Uso: " << argv[0] << " <n> <modo>" << endl;
+        cerr << "Uso: " << argv[0] << " <n> <num_threads>" << endl;
         return 1;
     }
 
-    int n = atoi(argv[1]); // tamaño del arreglo
-    int nt = atoi(argv[2]); // cantidad de hilos por defecto
-    
+    int n = atoi(argv[1]);
+    int nt = atoi(argv[2]);
 
     Benchmark(n, nt);
-    cout << "Benchmark completado" << endl;
-    cout << "Ejecute Python3 Gen_Graficos.py   para que se generen los graficos" << endl;
-    
+    cout << "Benchmark completado. Resultados guardados en archivos de texto." << endl;
     return 0;
 }
