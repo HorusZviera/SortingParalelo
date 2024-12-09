@@ -1,16 +1,20 @@
-#include <omp.h>
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <cstdlib>
-#include <ctime>
-#include <cuda_runtime.h>
-#include <iomanip>
-#include <fstream>
+#include <omp.h>            // OpenMP
+#include <iostream>         // cout, cerr
+#include <vector>           // vector
+#include <algorithm>        // max_element, generate
+#include <cstdlib>          // srand, rand
+#include <ctime>            // time
+#include <cuda_runtime.h>   // CUDA
+#include <iomanip>          // setprecision
+#include <fstream>          // lectura y escritura de archivos
 
 using namespace std;
 
+
+// ---------------------------------------------------------------------------------------------------------------------------------
 // Radix Sort en CPU usando OpenMP
+
+// ordena un vector de enteros usando el algoritmo de ordenamiento por conteo
 void counting_sort_cpu(vector<int>& vec, int exp, int nt) {
     int n = vec.size();
     vector<int> output(n);
@@ -46,6 +50,7 @@ void counting_sort_cpu(vector<int>& vec, int exp, int nt) {
     vec = output;
 }
 
+// se implementa el algoritmo de ordenamiento por radix sort
 void radix_sort_cpu(vector<int>& vec, int nt) {
     int max_val = *max_element(vec.begin(), vec.end());
 
@@ -54,19 +59,25 @@ void radix_sort_cpu(vector<int>& vec, int nt) {
     }
 }
 
+// Wrapper para llamar a la funcion de ordenamiento por radix sort en CPU
 extern "C" void ordenar_radix_sort_cpu_wrapper(int* arr, int size, int nt) {
     vector<int> vec(arr, arr + size);
     radix_sort_cpu(vec, nt);
     copy(vec.begin(), vec.end(), arr);
 }
 
+
+// ---------------------------------------------------------------------------------------------------------------------------------
 // Radix Sort en GPU usando CUDA
+
 #define THREADS_PER_BLOCK 256
 
+// obtiene el digito en la posicion indicada
 __device__ int get_digit(int number, int digit_place) {
     return (number / digit_place) % 10;
 }
 
+// kernel para contar la cantidad de elementos con el mismo digito
 __global__ void counting_sort_kernel(int* d_input, int* d_output, int* d_count, int n, int digit_place) {
     __shared__ int local_count[10];
 
@@ -89,6 +100,7 @@ __global__ void counting_sort_kernel(int* d_input, int* d_output, int* d_count, 
     }
 }
 
+// kernel para realizar un scan exclusivo de un arreglo
 __global__ void exclusive_scan(int* d_count, int* d_scan) {
     __shared__ int temp[10];
     int thread_id = threadIdx.x;
@@ -110,16 +122,18 @@ __global__ void exclusive_scan(int* d_count, int* d_scan) {
     }
 }
 
+// kernel para reordenar los elementos del arreglo
 __global__ void reorder_kernel(int* d_input, int* d_output, int* d_scan, int n, int digit_place) {
     int thread_id = threadIdx.x + blockIdx.x * blockDim.x;
 
     if (thread_id < n) {
         int digit = get_digit(d_input[thread_id], digit_place);
-        int position = d_scan[digit]++;
+        int position = atomicAdd(&d_scan[digit], 1);
         d_output[position] = d_input[thread_id];
     }
 }
 
+// se implementa el algoritmo de ordenamiento por radix sort
 void ordenar_radix_sort_gpu_wrapper(vector<int>& host_vector) {
     int n = host_vector.size();
     int* d_input;
@@ -159,6 +173,9 @@ void ordenar_radix_sort_gpu_wrapper(vector<int>& host_vector) {
     cudaFree(d_scan);
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+// benchmarking que compara el tiempo de ejecucion de radix sort en CPU y GPU
 void Benchmark(int n, int nt) {
     ofstream outfile_timing("Graficos/tiempo_vs_n.txt");
     ofstream outfile_cpu_speedup("Graficos/aceleracion_cpu_vs_hilos.txt");
@@ -173,41 +190,34 @@ void Benchmark(int n, int nt) {
     }
 
     int max_threads = omp_get_max_threads();
-    int max_blocks = 1024; // Asume un límite razonable para bloques CUDA
+    int max_blocks = 1024;
 
     for (int i = 1000; i <= n; i *= 10) {
         vector<int> vec_cpu(i), vec_gpu(i);
         srand(time(0));
-        for (int j = 0; j < i; j++) {
-            int val = rand() % 100;
-            vec_cpu[j] = val;
-            vec_gpu[j] = val;
-        }
+        generate(vec_cpu.begin(), vec_cpu.end(), []() { return rand() % 100; });
+        copy(vec_cpu.begin(), vec_cpu.end(), vec_gpu.begin());
 
-        // Tiempo CPU
+        outfile_timing << i << " CPU " << nt << endl;
         double start_time = omp_get_wtime();
         ordenar_radix_sort_cpu_wrapper(vec_cpu.data(), i, nt);
         double cpu_time = omp_get_wtime() - start_time;
         outfile_timing << i << " " << cpu_time << endl;
 
-        // Tiempo GPU
+        outfile_timing << i << " GPU " << endl;
         start_time = omp_get_wtime();
         ordenar_radix_sort_gpu_wrapper(vec_gpu);
         double gpu_time = omp_get_wtime() - start_time;
         outfile_timing << i << " " << gpu_time << endl;
 
-        // Speedup
         outfile_speedup_vs_n << i << " " << cpu_time / gpu_time << endl;
     }
 
-    // CPU Speedup y Eficiencia
     int problem_size = 1000000;
     for (int threads = 1; threads <= max_threads; threads++) {
         vector<int> vec(problem_size);
         srand(time(0));
-        for (int i = 0; i < problem_size; i++) {
-            vec[i] = rand() % 100;
-        }
+        generate(vec.begin(), vec.end(), []() { return rand() % 100; });
 
         double baseline_time;
         if (threads == 1) {
@@ -215,6 +225,9 @@ void Benchmark(int n, int nt) {
             ordenar_radix_sort_cpu_wrapper(vec.data(), problem_size, 1);
             baseline_time = omp_get_wtime() - start_time;
         }
+
+        outfile_cpu_speedup << problem_size << " CPU " << threads << endl;
+        outfile_cpu_efficiency << problem_size << " CPU " << threads << endl;
 
         double start_time = omp_get_wtime();
         ordenar_radix_sort_cpu_wrapper(vec.data(), problem_size, threads);
@@ -227,13 +240,10 @@ void Benchmark(int n, int nt) {
         outfile_cpu_efficiency << threads << " " << efficiency << endl;
     }
 
-    // GPU Speedup y Eficiencia
     for (int blocks = 1; blocks <= max_blocks; blocks *= 2) {
         vector<int> vec(problem_size);
         srand(time(0));
-        for (int i = 0; i < problem_size; i++) {
-            vec[i] = rand() % 100;
-        }
+        generate(vec.begin(), vec.end(), []() { return rand() % 100; });
 
         double baseline_time;
         if (blocks == 1) {
@@ -241,6 +251,9 @@ void Benchmark(int n, int nt) {
             ordenar_radix_sort_gpu_wrapper(vec);
             baseline_time = omp_get_wtime() - start_time;
         }
+
+        outfile_gpu_speedup << problem_size << " GPU " << blocks << endl;
+        outfile_gpu_efficiency << problem_size << " GPU " << blocks << endl;
 
         double start_time = omp_get_wtime();
         ordenar_radix_sort_gpu_wrapper(vec);
@@ -261,6 +274,10 @@ void Benchmark(int n, int nt) {
     outfile_speedup_vs_n.close();
 }
 
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+// Funcion principal
 int main(int argc, char* argv[]) {
     if (argc != 3) {
         cerr << "Uso: " << argv[0] << " <n> <num_threads>" << endl;

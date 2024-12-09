@@ -1,0 +1,28 @@
+# Entornos virtuales
+venv/
+
+# Archivos de configuración específicos de VSCode
+.vscode/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Configuración de logs y bases de datos
+*.log
+*.sqlite3
+
+# Archivos generados por herramientas
+*.egg-info/
+build/
+dist/
+
+# Archivos sensibles (si se generan)
+.env
+*.key
